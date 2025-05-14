@@ -1,4 +1,4 @@
-Operate the spotify-player command line program within NeoVim by the commands:
+Operate the spotify-player CLI/TUI program within NeoVim using the commands:
 
 ```
 :SpotifyPlayPause
