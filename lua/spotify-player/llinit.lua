@@ -36,7 +36,7 @@ local function Update_Callback(Returned)
 
 	M.State.Playing = false
 	M.State.AlbumTitle = ""
-	if string.find(result, "null") ~= nil then
+	if string.find(result, "null") == 1 then
 		M.State.isNull = true
 		M.State.AlbumTitle = "Not Playing"
 	else
@@ -78,7 +78,7 @@ local function Update_Callback(Returned)
 
 	if M.State.Playing then
 		local TimeLeft = tonumber(M.State.TimeTotal) - tonumber(M.State.TimeElapsed)
-		ms = TimeLeft + 2000 --add extra time so it updates after new track starts
+		ms = TimeLeft + 1000 --add extra time so it updates after new track starts
 	end
 
 	--clamp
@@ -88,7 +88,6 @@ local function Update_Callback(Returned)
 	if ms < Config.lualine_update_min_ms then
 		ms = Config.lualine_update_min_ms
 	end
-
 	vim.defer_fn(M.StateUpdate, ms)
 end
 
