@@ -2,45 +2,106 @@ local M = {}
 local Config = require("spotify-player.config")
 
 M.State = {
-	isNil = true,
+	isNull = true,
 	Playing = false,
-	Title = "",
+	AlbumTitle = "",
+	TrackTitle = "",
+	TimeElapsed = 0,
+	TimeTotal = 0,
 }
 
-function M.StateUpdate()
-	local handle = io.popen(Config.command_getdata)
-	local result = handle:read("*a")
-	handle:close()
-
-	M.State.isNil = true
-	M.State.Playing = false
-	local playback = string.find(result, '"is_playing":true')
-	if playback == nil then
-		M.State.Playing = false
-	else
-		M.State.isNil = false
-		M.State.Playing = true
-	end
-
-	M.State.Title = ""
-	if M.State.Playing then
-		local index = string.find(result, '"item":')
-		index = string.find(result, '"artists":', index)
-		index = string.find(result, '"name":"', index)
-		local indexend = string.find(result, '"', index)
-		local title = string.sub(result, index, indexend)
-		M.State.Title = title
-	end
-
-	vim.defer_fn(M.StateUpdate, Config.lualine_update_timer_ms)
+function M.isPlaying()
+	return M.State.Playing
 end
 
-function M.AnimUpdate()
-	--todo
-	vim.defer_fn(M.AnimUpdate, Config.lualine_anim_timer_ms)
+function M.get_icon()
+	if M.State.isNull then
+		return ""
+	end
+	if M.State.Playing then
+		return " "
+	end
+	return " "
+end
+
+function M.get_text()
+	if M.State.isNull then
+		return ""
+	end
+	return M.State.AlbumTitle .. ":" .. M.State.TrackTitle
+end
+
+local function Update_Callback(Returned)
+	local result = Returned.stdout
+
+	M.State.Playing = false
+	M.State.AlbumTitle = ""
+	if string.find(result, "null") ~= nil then
+		M.State.isNull = true
+		M.State.AlbumTitle = "Not Playing"
+	else
+		M.State.isNull = false
+		local isPlaying = string.find(result, '"is_playing":true')
+		if isPlaying ~= nil then
+			M.State.Playing = true
+		end
+
+		if M.State.isNull == false then
+			local index = string.find(result, '"item":')
+			index = string.find(result, '"artists":', index)
+			index = string.find(result, '"name":"', index)
+			index = index + 8 --move to right of double quote
+			local indexend = string.find(result, '"', index) - 1
+			local AlbumTitle = string.sub(result, index, indexend)
+			M.State.AlbumTitle = AlbumTitle
+
+			index = string.find(result, '"is_local":')
+			index = string.find(result, '"name":"', index)
+			index = index + 8 --move to right of double quote
+			local indexend = string.find(result, '"', index) - 1
+			local TrackTitle = string.sub(result, index, indexend)
+			M.State.TrackTitle = TrackTitle
+
+			index = string.find(result, '"progress_ms":')
+			index = index + 14
+			indexend = string.find(result, ",", index) - 1
+			M.State.TimeElapsed = string.sub(result, index, indexend)
+
+			index = string.find(result, '"duration_ms":')
+			index = index + 14
+			indexend = string.find(result, ",", index) - 1
+			M.State.TimeTotal = string.sub(result, index, indexend)
+		end
+	end
+
+	local ms = Config.lualine_update_timer_ms
+	if M.State.isNull then
+		ms = Config.lualine_update_timer_stopped_ms
+	end
+
+	if M.State.Playing then
+		vim.notify(M.State.TimeElapsed .. " of " .. M.State.TimeTotal)
+		local TimeLeft = tonumber(M.State.TimeTotal) - tonumber(M.State.TimeElapsed)
+		ms = TimeLeft + 2000 --add extra time so it updates after new track starts
+		vim.notify(ms)
+	end
+
+	--clamp
+	if ms > Config.lualine_update_max_ms then
+		ms = Config.lualine_update_max_ms
+	end
+	if ms < Config.lualine_update_min_ms then
+		ms = Config.lualine_update_min_ms
+	end
+
+	vim.notify(ms)
+	vim.defer_fn(M.StateUpdate, ms)
+end
+
+function M.StateUpdate()
+	vim.system({ "spotify_player", "get", "key", "playback" }, {}, Update_Callback)
 end
 
 M.StateUpdate()
-M.AnimUpdate()
 
 return M
