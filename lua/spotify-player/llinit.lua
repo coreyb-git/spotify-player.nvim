@@ -74,7 +74,7 @@ local function Update_Callback(Returned)
 		end
 	end
 
-	local ms = Config.lualine_update_timer_ms
+	local ms = Config.lualine_update_max_ms
 	if M.State.isNull then
 		ms = Config.lualine_update_timer_stopped_ms
 	end

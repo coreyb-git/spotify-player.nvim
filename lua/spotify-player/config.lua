@@ -7,5 +7,4 @@ return {
 
 	lualine_update_min_ms = 2000,
 	lualine_update_max_ms = 30000,
-	lualine_update_timer_stopped_ms = 60000,
 }
