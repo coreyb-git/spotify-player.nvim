@@ -6,5 +6,5 @@ return {
 	command_update_args = "get key playback",
 
 	lualine_update_min_ms = 2000,
-	lualine_update_max_ms = 30000,
+	lualine_update_max_ms = 60000,
 }
