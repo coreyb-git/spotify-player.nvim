@@ -80,10 +80,8 @@ local function Update_Callback(Returned)
 	end
 
 	if M.State.Playing then
-		vim.notify(M.State.TimeElapsed .. " of " .. M.State.TimeTotal)
 		local TimeLeft = tonumber(M.State.TimeTotal) - tonumber(M.State.TimeElapsed)
 		ms = TimeLeft + 2000 --add extra time so it updates after new track starts
-		vim.notify(ms)
 	end
 
 	--clamp
@@ -94,7 +92,6 @@ local function Update_Callback(Returned)
 		ms = Config.lualine_update_min_ms
 	end
 
-	vim.notify(ms)
 	vim.defer_fn(M.StateUpdate, ms)
 end
 
