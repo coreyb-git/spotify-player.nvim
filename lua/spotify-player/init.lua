@@ -9,10 +9,12 @@ end
 
 function M.PlayPause()
 	local handle = io.popen(config.command_playpause)
+	require("spotify-player.llinit").ForcePoll()
 end
 
 function M.Next()
 	local handle = io.popen(config.command_next)
+	require("spotify-player.llinit").ForcePoll()
 end
 
 vim.api.nvim_create_user_command(
