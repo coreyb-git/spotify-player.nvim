@@ -39,6 +39,11 @@ local function Update_Callback(Returned)
 
 	State.Playing = false
 	State.AlbumTitle = ""
+
+	if Returned.code > 0 then --if error
+		return
+	end
+
 	if string.find(result, "null") == 1 then
 		State.isNull = true
 		State.AlbumTitle = "Not Playing"
@@ -98,6 +103,11 @@ local function Update_Callback(Returned)
 	end
 end
 
+local function onError(err, data)
+	State.isNull = true
+	State.Playing = false
+end
+
 function M.ForcePoll()
 	State.NextPoll_ms = 5000
 end
@@ -108,7 +118,7 @@ function TimerUpdate()
 	State.NextPoll_ms = State.NextPoll_ms - Config.lualine_timer_update_ms
 	if State.NextPoll_ms <= 0 then
 		State.NextPoll_ms = Config.lualine_update_max_ms
-		vim.system({ "spotify_player", "get", "key", "playback" }, {}, Update_Callback)
+		vim.system({ "spotify_player", "get", "key", "playback" }, { stderr = onError }, Update_Callback)
 	end
 
 	vim.defer_fn(TimerUpdate, Config.lualine_timer_update_ms)
