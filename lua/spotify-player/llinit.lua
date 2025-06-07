@@ -39,6 +39,7 @@ local function Update_Callback(Returned)
 
 	State.Playing = false
 	State.AlbumTitle = ""
+	State.TrackTitle = ""
 
 	if Returned.code > 0 then --if error
 		return
@@ -57,28 +58,34 @@ local function Update_Callback(Returned)
 		if State.isNull == false then
 			local index = string.find(result, '"item":')
 			index = string.find(result, '"artists":', index)
-			index = string.find(result, '"name":"', index)
-			index = index + 8 --move to right of double quote
-			local indexend = string.find(result, '"', index) - 1
-			local AlbumTitle = string.sub(result, index, indexend)
-			State.AlbumTitle = AlbumTitle
+			if index == nil then --probably Spotify DJ talking, so no actual track being played.
+				State.AlbumTitle = "Spotify DJ"
+				State.TimeElapsed = 0
+				State.TimeTotal = 10000 --try to update in 10 seconds
+			else
+				index = string.find(result, '"name":"', index)
+				index = index + 8 --move to right of double quote
+				local indexend = string.find(result, '"', index) - 1
+				local AlbumTitle = string.sub(result, index, indexend)
+				State.AlbumTitle = AlbumTitle
 
-			index = string.find(result, '"is_local":')
-			index = string.find(result, '"name":"', index)
-			index = index + 8 --move to right of double quote
-			local indexend = string.find(result, '"', index) - 1
-			local TrackTitle = string.sub(result, index, indexend)
-			State.TrackTitle = TrackTitle
+				index = string.find(result, '"is_local":')
+				index = string.find(result, '"name":"', index)
+				index = index + 8 --move to right of double quote
+				local indexend = string.find(result, '"', index) - 1
+				local TrackTitle = string.sub(result, index, indexend)
+				State.TrackTitle = TrackTitle
 
-			index = string.find(result, '"progress_ms":')
-			index = index + 14
-			indexend = string.find(result, ",", index) - 1
-			State.TimeElapsed = string.sub(result, index, indexend)
+				index = string.find(result, '"progress_ms":')
+				index = index + 14
+				indexend = string.find(result, ",", index) - 1
+				State.TimeElapsed = string.sub(result, index, indexend)
 
-			index = string.find(result, '"duration_ms":')
-			index = index + 14
-			indexend = string.find(result, ",", index) - 1
-			State.TimeTotal = string.sub(result, index, indexend)
+				index = string.find(result, '"duration_ms":')
+				index = index + 14
+				indexend = string.find(result, ",", index) - 1
+				State.TimeTotal = string.sub(result, index, indexend)
+			end
 		end
 	end
 	require("spotify-player.marquee").setText(State.AlbumTitle, State.TrackTitle)
