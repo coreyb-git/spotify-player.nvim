@@ -35,8 +35,10 @@ function M.setText(Album, Track)
 end
 
 function M.Update()
+	local forceRefresh = false
 	if State.AnimIndex <= State.AnimEndIndex then
 		State.AnimIndex = State.AnimIndex + 1
+		forceRefresh = true
 	end
 
 	local index = State.AnimIndex
@@ -46,6 +48,9 @@ function M.Update()
 
 	--State.ShownText = string.sub(State.Text, index, index + Config.lualine_chars_max - 1)
 	State.ShownText = string.sub(State.Text, index, index + State.CharCount - 1)
+	if forceRefresh then
+		require("lualine").refresh({ scope = "all", place = { "statusline" } })
+	end
 end
 
 function M.getText()
