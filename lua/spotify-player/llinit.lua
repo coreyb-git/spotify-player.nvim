@@ -26,14 +26,6 @@ function M.get_icon()
 	return " "
 end
 
-function M.get_text()
-	if State.isNull then
-		return ""
-	end
-	return require("spotify-player.marquee").getText()
-	--return State.AlbumTitle .. ":" .. State.TrackTitle
-end
-
 local function Update_Callback(Returned)
 	local result = Returned.stdout
 
@@ -59,9 +51,10 @@ local function Update_Callback(Returned)
 			local index = string.find(result, '"item":')
 			index = string.find(result, '"artists":', index)
 			if index == nil then --probably Spotify DJ talking, so no actual track being played.
-				State.AlbumTitle = "Spotify DJ"
+				State.AlbumTitle = "Spotify"
+				State.TrackTitle = "DJ X"
 				State.TimeElapsed = 0
-				State.TimeTotal = 10000 --try to update in 10 seconds
+				State.TimeTotal = 10000 --try to update again in 10 seconds
 			else
 				index = string.find(result, '"name":"', index)
 				index = index + 8 --move to right of double quote
@@ -72,7 +65,7 @@ local function Update_Callback(Returned)
 				index = string.find(result, '"is_local":')
 				index = string.find(result, '"name":"', index)
 				index = index + 8 --move to right of double quote
-				local indexend = string.find(result, '"', index) - 1
+				indexend = string.find(result, '"', index) - 1
 				local TrackTitle = string.sub(result, index, indexend)
 				State.TrackTitle = TrackTitle
 
@@ -104,10 +97,7 @@ local function Update_Callback(Returned)
 	if ms < Config.lualine_update_min_ms then
 		ms = Config.lualine_update_min_ms
 	end
-
-	if State.NextPoll_ms > ms then
-		State.NextPoll_ms = ms
-	end
+	State.NextPoll_ms = ms
 end
 
 local function onError(err, data)
@@ -116,7 +106,7 @@ local function onError(err, data)
 end
 
 function M.ForcePoll()
-	State.NextPoll_ms = 5000
+	State.NextPoll_ms = 0
 end
 
 function TimerUpdate()
@@ -125,7 +115,7 @@ function TimerUpdate()
 	State.NextPoll_ms = State.NextPoll_ms - Config.lualine_timer_update_ms
 	if State.NextPoll_ms <= 0 then
 		State.NextPoll_ms = Config.lualine_update_max_ms
-		vim.system({ "spotify_player", "get", "key", "playback" }, { stderr = onError }, Update_Callback)
+		vim.system(Config.command_update, { stderr = onError }, Update_Callback)
 	end
 
 	vim.defer_fn(TimerUpdate, Config.lualine_timer_update_ms)

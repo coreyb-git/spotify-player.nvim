@@ -1,5 +1,6 @@
 local M = {}
 local config = require("spotify-player.config")
+local llinit = require("spotify-player.llinit")
 
 function M.setup(opts)
 	for i, v in pairs(opts) do
@@ -8,7 +9,6 @@ function M.setup(opts)
 end
 
 local function Command_Update(Returned)
-	local result = Returned.stdout
 	--[[
 	print("code: " .. Returned.code)
 	print("signal: " .. Returned.signal)
@@ -29,6 +29,7 @@ local function Command_Update(Returned)
 		end
 		vim.notify(s, level, notifyopts)
 	end
+	require("spotify-player.llinit").ForcePoll()
 end
 
 function M.PlayPause()

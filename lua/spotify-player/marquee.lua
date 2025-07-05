@@ -49,7 +49,7 @@ function M.Update()
 	--State.ShownText = string.sub(State.Text, index, index + Config.lualine_chars_max - 1)
 	State.ShownText = string.sub(State.Text, index, index + State.CharCount - 1)
 	if forceRefresh then
-		require("lualine").refresh({ scope = "all", place = { "statusline" } })
+		--require("lualine").refresh({ scope = "all", place = { "statusline" } })
 	end
 end
 
