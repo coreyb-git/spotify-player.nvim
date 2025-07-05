@@ -7,36 +7,14 @@ function M.setup(opts)
 	end
 end
 
-local function Command_Update(Returned)
-	local result = Returned.stdout
-	--[[
-	print("code: " .. Returned.code)
-	print("signal: " .. Returned.signal)
-	print("stdout: " .. Returned.stdout)
-	print("stderr: " .. Returned.stderr)
-	]]
-	--
-	if Returned.code ~= 0 then
-		require("notify")
-		local notifyopts = { title = "spotify-player", timeout = 5000 }
-		local s = ""
-		local level = vim.log.levels.INFO
-		if string.find(Returned.stderr, "no playback found") then
-			s = "No Spotify player is currently running.\n\nStart Spotify first."
-		else
-			s = Returned.stderr
-			level = vim.log.levels.ERROR
-		end
-		vim.notify(s, level, notifyopts)
-	end
-end
-
 function M.PlayPause()
-	vim.system(config.command_playpause, {}, Command_Update)
+	local handle = io.popen(config.command_playpause)
+	require("spotify-player.llinit").ForcePoll()
 end
 
 function M.Next()
-	vim.system(config.command_next, {}, Command_Update)
+	local handle = io.popen(config.command_next)
+	require("spotify-player.llinit").ForcePoll()
 end
 
 vim.api.nvim_create_user_command(
