@@ -92,7 +92,7 @@ local function Update_Callback(Returned)
 end
 
 function M.StateUpdate()
-	vim.system({ "spotify_player", "get", "key", "playback" }, {}, Update_Callback)
+	vim.system(Config.command_update, {}, Update_Callback)
 end
 
 M.StateUpdate()
