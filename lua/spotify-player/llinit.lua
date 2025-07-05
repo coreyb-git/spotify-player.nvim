@@ -1,5 +1,6 @@
 local M = {}
 local Config = require("spotify-player.config")
+local marquee = require("spotify-player.marquee")
 
 local State = {
 	NextPoll_ms = 0,
@@ -24,6 +25,14 @@ function M.get_icon()
 		return " "
 	end
 	return " "
+end
+
+function M.get_text()
+	if State.isNull then
+		return ""
+	else
+		return marquee.getText()
+	end
 end
 
 local function Update_Callback(Returned)
@@ -81,7 +90,7 @@ local function Update_Callback(Returned)
 			end
 		end
 	end
-	require("spotify-player.marquee").setText(State.AlbumTitle, State.TrackTitle)
+	marquee.setText(State.AlbumTitle, State.TrackTitle)
 
 	local ms = Config.lualine_update_max_ms
 
@@ -110,7 +119,7 @@ function M.ForcePoll()
 end
 
 function TimerUpdate()
-	require("spotify-player.marquee").Update()
+	marquee.Update()
 
 	State.NextPoll_ms = State.NextPoll_ms - Config.lualine_timer_update_ms
 	if State.NextPoll_ms <= 0 then

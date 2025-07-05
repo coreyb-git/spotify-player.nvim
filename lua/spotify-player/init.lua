@@ -22,14 +22,14 @@ local function Command_Update(Returned)
 		local s = ""
 		local level = vim.log.levels.INFO
 		if string.find(Returned.stderr, "no playback found") then
-			s = "No Spotify player is currently running.\n\nStart Spotify first."
+			s = "Spotify isn't playing..\n\nStart a track in Spotify first."
 		else
 			s = Returned.stderr
 			level = vim.log.levels.ERROR
 		end
 		vim.notify(s, level, notifyopts)
 	end
-	require("spotify-player.llinit").ForcePoll()
+	llinit.ForcePoll()
 end
 
 function M.PlayPause()
