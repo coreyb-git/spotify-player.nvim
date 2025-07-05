@@ -16,7 +16,7 @@ function M.setText(Album, Track)
 	local s = alb .. " " .. Track .. "     " .. alb
 	local stotal = s .. " " .. Track .. EndBlanks
 	if State.Text ~= stotal then -- if the song has changed then reset animation
-		State.CharCount = string.len(alb)
+		State.CharCount = string.len(alb) --ensure enough chars to show full album at start if track length is shorter than album name
 		local tracklen = string.len(Track)
 		if State.CharCount < tracklen then
 			State.CharCount = tracklen
@@ -27,10 +27,11 @@ function M.setText(Album, Track)
 		if State.CharCount > Config.lualine_chars_max then
 			State.CharCount = Config.lualine_chars_max
 		end
-		State.AnimIndex = -9
+		State.AnimIndex = -9 -- negative numbers cause a pause before the marquee rotates
 		State.AnimEndIndex = string.len(s) + 1
 		State.Text = stotal
-		M.Update()
+		-- Don't call Update() here as it causes an issue with lualine "fast update context"
+		-- Let timer catch it instead
 	end
 end
 
@@ -46,10 +47,9 @@ function M.Update()
 		index = 1
 	end
 
-	--State.ShownText = string.sub(State.Text, index, index + Config.lualine_chars_max - 1)
 	State.ShownText = string.sub(State.Text, index, index + State.CharCount - 1)
 	if forceRefresh then
-		--require("lualine").refresh({ scope = "all", place = { "statusline" } })
+		require("lualine").refresh({ scope = "all", place = { "statusline" } })
 	end
 end
 
