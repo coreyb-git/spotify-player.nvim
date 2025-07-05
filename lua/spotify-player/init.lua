@@ -29,16 +29,15 @@ local function Command_Update(Returned)
 		end
 		vim.notify(s, level, notifyopts)
 	end
+	require("spotify-player.llinit").ForcePoll()
 end
 
 function M.PlayPause()
 	vim.system(config.command_playpause, {}, Command_Update)
-	require("spotify-player.llinit").ForcePoll()
 end
 
 function M.Next()
 	vim.system(config.command_next, {}, Command_Update)
-	require("spotify-player.llinit").ForcePoll()
 end
 
 vim.api.nvim_create_user_command(

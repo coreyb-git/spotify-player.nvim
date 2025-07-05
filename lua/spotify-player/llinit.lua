@@ -44,9 +44,10 @@ local function Update_Callback(Returned)
 			local index = string.find(result, '"item":')
 			index = string.find(result, '"artists":', index)
 			if index == nil then --probably Spotify DJ talking, so no actual track being played.
-				M.State.AlbumTitle = "Spotify DJ"
+				M.State.AlbumTitle = "Spotify"
+				M.State.TrackTitle = "DJ X"
 				M.State.TimeElapsed = 0
-				M.State.TimeTotal = 10000 --try to update in 10 seconds
+				M.State.TimeTotal = 10000 --try to update again in 10 seconds
 			else
 				index = string.find(result, '"name":"', index)
 				index = index + 8 --move to right of double quote
@@ -89,7 +90,7 @@ local function Update_Callback(Returned)
 	if ms < Config.lualine_update_min_ms then
 		ms = Config.lualine_update_min_ms
 	end
-	vim.defer_fn(M.StateUpdate, ms)
+	M.State.NextPoll_ms = ms
 end
 
 local function onError(err, data)
@@ -98,7 +99,7 @@ local function onError(err, data)
 end
 
 function M.ForcePoll()
-	M.State.NextPoll_ms = 5000
+	M.State.NextPoll_ms = 0
 end
 
 function TimerUpdate()
