@@ -8,6 +8,7 @@ M.State = {
 	TrackTitle = "",
 	TimeElapsed = 0,
 	TimeTotal = 0,
+	NextPoll_ms = 0,
 }
 
 function M.isPlaying()
@@ -22,13 +23,6 @@ function M.get_icon()
 		return " "
 	end
 	return " "
-end
-
-function M.get_text()
-	if M.State.isNull then
-		return ""
-	end
-	return M.State.AlbumTitle .. ":" .. M.State.TrackTitle
 end
 
 local function Update_Callback(Returned)
@@ -49,30 +43,37 @@ local function Update_Callback(Returned)
 		if M.State.isNull == false then
 			local index = string.find(result, '"item":')
 			index = string.find(result, '"artists":', index)
-			index = string.find(result, '"name":"', index)
-			index = index + 8 --move to right of double quote
-			local indexend = string.find(result, '"', index) - 1
-			local AlbumTitle = string.sub(result, index, indexend)
-			M.State.AlbumTitle = AlbumTitle
+			if index == nil then --probably Spotify DJ talking, so no actual track being played.
+				M.State.AlbumTitle = "Spotify DJ"
+				M.State.TimeElapsed = 0
+				M.State.TimeTotal = 10000 --try to update in 10 seconds
+			else
+				index = string.find(result, '"name":"', index)
+				index = index + 8 --move to right of double quote
+				local indexend = string.find(result, '"', index) - 1
+				local AlbumTitle = string.sub(result, index, indexend)
+				M.State.AlbumTitle = AlbumTitle
 
-			index = string.find(result, '"is_local":')
-			index = string.find(result, '"name":"', index)
-			index = index + 8 --move to right of double quote
-			local indexend = string.find(result, '"', index) - 1
-			local TrackTitle = string.sub(result, index, indexend)
-			M.State.TrackTitle = TrackTitle
+				index = string.find(result, '"is_local":')
+				index = string.find(result, '"name":"', index)
+				index = index + 8 --move to right of double quote
+				indexend = string.find(result, '"', index) - 1
+				local TrackTitle = string.sub(result, index, indexend)
+				M.State.TrackTitle = TrackTitle
 
-			index = string.find(result, '"progress_ms":')
-			index = index + 14
-			indexend = string.find(result, ",", index) - 1
-			M.State.TimeElapsed = string.sub(result, index, indexend)
+				index = string.find(result, '"progress_ms":')
+				index = index + 14
+				indexend = string.find(result, ",", index) - 1
+				M.State.TimeElapsed = string.sub(result, index, indexend)
 
-			index = string.find(result, '"duration_ms":')
-			index = index + 14
-			indexend = string.find(result, ",", index) - 1
-			M.State.TimeTotal = string.sub(result, index, indexend)
+				index = string.find(result, '"duration_ms":')
+				index = index + 14
+				indexend = string.find(result, ",", index) - 1
+				M.State.TimeTotal = string.sub(result, index, indexend)
+			end
 		end
 	end
+	require("spotify-player.marquee").setText(M.State.AlbumTitle, M.State.TrackTitle)
 
 	local ms = Config.lualine_update_max_ms
 
@@ -91,10 +92,27 @@ local function Update_Callback(Returned)
 	vim.defer_fn(M.StateUpdate, ms)
 end
 
-function M.StateUpdate()
-	vim.system({ "spotify_player", "get", "key", "playback" }, {}, Update_Callback)
+local function onError(err, data)
+	M.State.isNull = true
+	M.State.Playing = false
 end
 
-M.StateUpdate()
+function M.ForcePoll()
+	M.State.NextPoll_ms = 5000
+end
+
+function TimerUpdate()
+	require("spotify-player.marquee").Update()
+
+	M.State.NextPoll_ms = M.State.NextPoll_ms - Config.lualine_timer_update_ms
+	if M.State.NextPoll_ms <= 0 then
+		M.State.NextPoll_ms = Config.lualine_update_max_ms
+		vim.system(Config.command_update, { stderr = onError }, Update_Callback)
+	end
+
+	vim.defer_fn(TimerUpdate, Config.lualine_timer_update_ms)
+end
+
+TimerUpdate()
 
 return M
