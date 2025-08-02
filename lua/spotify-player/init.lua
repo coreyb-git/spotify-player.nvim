@@ -17,7 +17,7 @@ local function Command_Update(Returned)
 	]]
 	--
 	if Returned.code ~= 0 then
-		require("notify")
+		--require("notify")
 		local notifyopts = { title = "spotify-player", timeout = 5000 }
 		local s = ""
 		local level = vim.log.levels.INFO

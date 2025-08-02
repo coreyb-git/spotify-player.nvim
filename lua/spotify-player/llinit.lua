@@ -2,116 +2,151 @@ local M = {}
 local Config = require("spotify-player.config")
 local marquee = require("spotify-player.marquee")
 
+local PlayingState = {
+	Stopped = 1,
+	Paused = 2,
+	PlayingTrack = 3,
+	Podcast = 4,
+	Ad = 10,
+	DJ_X = 20,
+	Unknown = 999,
+	Error = 1234,
+}
+
+local Icons = {}
+Icons[PlayingState.Stopped] = " "
+Icons[PlayingState.Paused] = "󰏤 "
+Icons[PlayingState.PlayingTrack] = " "
+Icons[PlayingState.Podcast] = " "
+Icons[PlayingState.Ad] = "󰢤 "
+Icons[PlayingState.DJ_X] = " "
+Icons[PlayingState.Unknown] = "?"
+Icons[PlayingState.Error] = "Error"
+
 local State = {
 	NextPoll_ms = 0,
 
-	isNull = true,
-	Playing = false,
+	PlayingState = PlayingState.Unknown,
 	AlbumTitle = "",
 	TrackTitle = "",
 	TimeElapsed = 0,
 	TimeTotal = 0,
 }
 
-function M.isPlaying()
-	return State.Playing
-end
-
 function M.get_icon()
-	if State.isNull then
+	if State.PlayingState == PlayingState.Stopped then
 		return ""
 	end
-	if State.Playing then
-		return " "
-	end
-	return " "
+	return Icons[State.PlayingState]
 end
 
 function M.get_text()
-	if State.isNull then
+	if State.PlayingState == PlayingState.Stopped then
 		return ""
-	else
-		return marquee.getText()
 	end
+	return marquee.getText()
 end
 
 local function Update_Callback(Returned)
 	local result = Returned.stdout
 
-	State.Playing = false
+	-- Reset state variables for each update to ensure clean data
+	State.PlayingState = PlayingState.Unknown
 	State.AlbumTitle = ""
 	State.TrackTitle = ""
+	State.TimeElapsed = 0
+	State.TimeTotal = 0
 
-	if Returned.code > 0 then --if error
+	local poll_ms_for_state = Config.lualine_update_max_ms -- Default poll time for non-playing, errors, etc.
+
+	-- Handle command errors or "null" response (no active device)
+	if string.find(result, "null") == 1 then
+		State.PlayingState = PlayingState.Stopped
+		State.AlbumTitle = ""
+		State.TrackTitle = ""
+		marquee.setText(State.AlbumTitle, State.TrackTitle)
+		State.NextPoll_ms = poll_ms_for_state
 		return
 	end
 
-	if string.find(result, "null") == 1 then
-		State.isNull = true
-		State.AlbumTitle = "Not Playing"
-	else
-		State.isNull = false
-		local isPlaying = string.find(result, '"is_playing":true')
-		if isPlaying ~= nil then
-			State.Playing = true
+	if Returned.code > 0 then
+		State.PlayingState = PlayingState.Error
+		--[[State.AlbumTitle = "Returned code: " .. Returned.code
+		State.TrackTitle = Returned.stderr or ""
+		--print(vim.inspect(Returned))
+		marquee.setText(State.AlbumTitle, State.TrackTitle)]]
+		State.NextPoll_ms = poll_ms_for_state
+		return
+	end
+
+	local data = vim.json.decode(result)
+
+	-- Handle JSON decoding errors
+	if not data then
+		State.PlayingState = PlayingState.Unknown
+		State.AlbumTitle = "Error"
+		State.TrackTitle = "Failed to parse JSON"
+		marquee.setText(State.AlbumTitle, State.TrackTitle)
+		State.NextPoll_ms = poll_ms_for_state
+		return
+	end
+
+	State.TimeElapsed = data.progress_ms or 0
+	State.TimeTotal = (data.item and (type(data.item) == "table") and data.item.duration_ms) or 0
+
+	if data.item then
+		if data.item == vim.NIL then
+			State.PlayingState = PlayingState.DJ_X
+			State.AlbumTitle = "Spotify"
+			State.TrackTitle = "DJ X"
+			State.NextPoll_ms = Config.lualine_update_min_ms
+			marquee.setText(State.AlbumTitle, State.TrackTitle)
+			return
 		end
 
-		if State.isNull == false then
-			local index = string.find(result, '"item":')
-			index = string.find(result, '"artists":', index)
-			if index == nil then --probably Spotify DJ talking, so no actual track being played.
-				State.AlbumTitle = "Spotify"
-				State.TrackTitle = "DJ X"
-				State.TimeElapsed = 0
-				State.TimeTotal = 10000 --try to update again in 10 seconds
-			else
-				index = string.find(result, '"name":"', index)
-				index = index + 8 --move to right of double quote
-				local indexend = string.find(result, '"', index) - 1
-				local AlbumTitle = string.sub(result, index, indexend)
-				State.AlbumTitle = AlbumTitle
-
-				index = string.find(result, '"is_local":')
-				index = string.find(result, '"name":"', index)
-				index = index + 8 --move to right of double quote
-				indexend = string.find(result, '"', index) - 1
-				local TrackTitle = string.sub(result, index, indexend)
-				State.TrackTitle = TrackTitle
-
-				index = string.find(result, '"progress_ms":')
-				index = index + 14
-				indexend = string.find(result, ",", index) - 1
-				State.TimeElapsed = string.sub(result, index, indexend)
-
-				index = string.find(result, '"duration_ms":')
-				index = index + 14
-				indexend = string.find(result, ",", index) - 1
-				State.TimeTotal = string.sub(result, index, indexend)
-			end
+		if data.currently_playing_type == "track" then
+			State.PlayingState = PlayingState.PlayingTrack
+			State.AlbumTitle = (data.item.artists and #data.item.artists > 0 and data.item.artists[1].name)
+				or "Unknown Artist"
+			State.TrackTitle = data.item.name or "Unknown Track"
+			poll_ms_for_state = (data.item.duration_ms - data.progress_ms) + Config.lualine_update_trackend_padding_ms
+		elseif data.currently_playing_type == "episode" then
+			State.PlayingState = PlayingState.Podcast
+			State.AlbumTitle = (data.item.show and data.item.show.name) or "Podcast"
+			State.TrackTitle = data.item.name or "Unknown Episode"
+			poll_ms_for_state = (data.item.duration_ms - data.progress_ms) + Config.lualine_update_trackend_padding_ms
+		elseif data.currently_playing_type == "ad" then
+			State.PlayingState = PlayingState.Ad
+			State.AlbumTitle = "Advertisement"
+			State.TrackTitle = "Playing Now"
+			poll_ms_for_state = Config.lualine_update_min_ms -- Poll frequently during ads
+		else
+			-- Covers Spotify DJ, "unsupported" type, or other cases where no 'item' is present but player is active.
+			State.PlayingState = PlayingState.Unknown
+			State.AlbumTitle = "Unknown"
+			State.TrackTitle = "Unknown"
+			poll_ms_for_state = Config.lualine_update_max_ms
 		end
 	end
+
+	local is_playing = data.is_playing or false
+	if not is_playing then
+		State.PlayingState = PlayingState.Paused
+	end
+
 	marquee.setText(State.AlbumTitle, State.TrackTitle)
 
-	local ms = Config.lualine_update_max_ms
-
-	if State.Playing then
-		local TimeLeft = tonumber(State.TimeTotal) - tonumber(State.TimeElapsed)
-		ms = TimeLeft + 1000 --add extra time so it updates after new track starts
-	end
-
-	--clamp
-	if ms > Config.lualine_update_max_ms then
-		ms = Config.lualine_update_max_ms
-	end
-	if ms < Config.lualine_update_min_ms then
-		ms = Config.lualine_update_min_ms
-	end
-	State.NextPoll_ms = ms
+	-- Clamp NextPoll_ms within configured bounds
+	State.NextPoll_ms = math.min(poll_ms_for_state, Config.lualine_update_max_ms)
+	State.NextPoll_ms = math.max(State.NextPoll_ms, Config.lualine_update_min_ms)
 end
 
-local function onError(err, data)
-	State.isNull = true
-	State.Playing = false
+local function onError(err, _)
+	State.PlayingState = PlayingState.Error
+	--[[State.AlbumTitle = "Error"
+	State.TrackTitle = err or "Command Failed"
+	State.NextPoll_ms = Config.lualine_update_max_ms -- Wait longer after an error
+	marquee.setText(State.AlbumTitle, State.TrackTitle)]]
 end
 
 function M.ForcePoll()

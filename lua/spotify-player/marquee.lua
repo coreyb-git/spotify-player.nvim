@@ -1,7 +1,7 @@
 local M = {}
 local Config = require("spotify-player.config")
 
-local EndBlanks = ""
+local EndBlanks = "" --set correctly later
 
 local State = {
 	Text = "",
@@ -16,6 +16,7 @@ function M.setText(Album, Track)
 	local s = alb .. " " .. Track .. "     " .. alb
 	local stotal = s .. " " .. Track .. EndBlanks
 	if State.Text ~= stotal then -- if the song has changed then reset animation
+		--		vim.notify(State.Text .. "\n" .. stotal)
 		State.CharCount = string.len(alb) --ensure enough chars to show full album at start if track length is shorter than album name
 		local tracklen = string.len(Track)
 		if State.CharCount < tracklen then
