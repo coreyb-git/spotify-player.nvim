@@ -26,7 +26,7 @@ Icons[PlayingState.Error] = "Error"
 local State = {
 	NextPoll_ms = 0,
 
-	PlayingState = PlayingState.Unknown,
+	PlayingState = PlayingState.Stopped,
 	AlbumTitle = "",
 	TrackTitle = "",
 	TimeElapsed = 0,
